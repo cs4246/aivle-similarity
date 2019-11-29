@@ -224,6 +224,8 @@ def monitor(client, cache=None, sleep=3600):
             logger.info('Can\'t connect to aiVLE')
             more = False
 
+os.makedirs(settings.TEMPLATES_PATH, exist_ok=True)
+
 cache = {}
 client = SimilarityClient()
 monitor(client, cache)

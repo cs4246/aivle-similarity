@@ -7,5 +7,5 @@ SIMILARITY_API = os.getenv("SIMILARITY_API")
 USERNAME = os.getenv("USERNAME")
 PASSWORD = os.getenv("PASSWORD")
 
-AGENTS_PATH = '/home/course/cs4246/aivle-runner/agents'
-TEMPLATES_PATH = 'templates'
+AGENTS_PATH = os.getenv("AGENTS_PATH")
+TEMPLATES_PATH = os.getenv("TEMPLATES_PATH")

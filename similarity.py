@@ -188,6 +188,18 @@ def get_task_similarities(task):
 
 # ---
 
+def try_download_template(task, retry=3):
+    for i in range(retry):
+        template_path = os.path.join(settings.TEMPLATES_PATH, '{}.zip'.format(task['id']))
+        try:
+            logger.info('Downloading task {}... '.format(task['id']))
+            download(task['template_url'], template_path)
+            return True
+        except Exception as e:
+            logger.error(e)
+    logger.error('Task download failure:', task['id'])
+    return False
+
 def handler(client, data, cache=None):
     for task in data['results']:
         # if task['id'] != 4: # DEBUG
@@ -195,6 +207,9 @@ def handler(client, data, cache=None):
         #     continue
 
         if task['template_file'] is None:
+            continue
+
+        if not try_download_template(task):
             continue
 
         submissions_by_user = get_submissions_by_user(task['id'])
@@ -224,8 +239,6 @@ def monitor(client, cache=None, sleep=3600):
             logger.info('Can\'t connect to aiVLE')
             more = False
 
-os.makedirs(settings.TEMPLATES_PATH, exist_ok=True)
-
-cache = {}
+cache = load_cache()
 client = SimilarityClient()
 monitor(client, cache)

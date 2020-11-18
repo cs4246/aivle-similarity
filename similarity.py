@@ -83,7 +83,7 @@ def get_similarity(a, b):
     if len(longer) < len(shorter):
         longer, shorter = b, a
     longer_length = len(longer)
-    return (longer_length - editdistance.eval(longer, shorter)) / longer_length;
+    return (longer_length - editdistance.eval(longer, shorter)) / max(1, longer_length);
 
 def get_diff(a, b, fromfile=None, tofile=None):
     diff = difflib.unified_diff(a.splitlines(), b.splitlines(), fromfile=fromfile, tofile=tofile)
@@ -151,8 +151,15 @@ def get_similarities(max_score_submissions, content_fn):
             if user_id == opponent_id:
                 continue
 
-            user_content, fromfile = content_fn(submission)
-            opponent_content, tofile = content_fn(target)
+            try:
+                user_content, fromfile = content_fn(submission)
+                opponent_content, tofile = content_fn(target)
+            except FileNotFoundError:
+                print('NOT FOUND:', submission['task'], submission['user'], submission['id'], target['id'])
+                continue
+            except KeyError:
+                print('KeyError:', submission['task'], submission['user'], submission['id'], target['id'])
+                continue
 
             score = get_similarity(user_content, opponent_content)
             diff = get_diff(user_content, opponent_content, fromfile=fromfile, tofile=tofile)
@@ -217,9 +224,9 @@ def handler(client, data, cache=None):
             logger.info('Submissions for task {} unchanged. Skipping.'.format(task['id']))
             continue
         cache[task['id']] = submissions_by_user
-        save_cache(cache)
 
         similarities = get_task_similarities(task)
+        save_cache(cache)
         client.update_batch(similarities)
 
 def monitor(client, cache=None, sleep=3600):
@@ -229,12 +236,16 @@ def monitor(client, cache=None, sleep=3600):
         if not more:
             time.sleep(sleep)
         try:
-            r = api.request()
-            if r.status_code != 200:
-                more = False
-                logger.error(r.status_code)
-                continue
-            more = handler(client, r.json(), cache)
+            next_url = settings.TASK_API
+            while next_url is not None:
+                r = api.base.request(next_url)
+                if r.status_code != 200:
+                    more = False
+                    logger.error(r.status_code)
+                    continue
+                data = r.json()
+                more = handler(client, data, cache)
+                next_url = data['next']
         except requests.exceptions.ConnectionError as e:
             logger.info('Can\'t connect to aiVLE')
             more = False
